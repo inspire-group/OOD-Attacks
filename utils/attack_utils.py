@@ -43,3 +43,31 @@ def pgd_attack(model, image_tensor, img_variable, tar_label_variable,
     #print("peturbation= {}".format(
     #    np.max(np.abs(np.array(x_adv)-np.array(image_tensor)))))
     return img_variable
+
+def pgd_l2_attack(model, image_tensor, img_variable, tar_label_variable,
+               n_steps, eps_max, eps_step, clip_min, clip_max, targeted):
+    """
+    image_tensor: tensor which holds the clean images. 
+    img_variable: Corresponding pytorch variable for image_tensor.
+    tar_label_variable: Assuming targeted attack, this variable holds the targeted labels. 
+    n_steps: number of attack iterations. 
+    eps_max: maximum l_inf attack perturbations. 
+    eps_step: l_inf attack perturbation per step
+    """
+    output = model.forward(img_variable)
+    for i in range(n_steps):
+        zero_gradients(img_variable)
+        output = model.forward(img_variable)
+        loss_cal = cal_loss(output, tar_label_variable, targeted)
+        loss_cal.backward()
+        grad = img_variable.grad.data
+        grad_norm = torch.max(
+               grad.view(grad.size(0), -1).norm(2, 1), torch.tensor(1e-9).cuda())
+        grad_dir = grad/grad_norm.view(grad.size(0),1,1,1)
+        clipped_grad = torch.max(grad_norm, eps_max.view(grad.size(0),-1))
+        adv_temp = image_tensor + -1 * eps_step* clipped_grad
+        x_adv = torch.clamp(adv_temp, clip_min, clip_max)
+        img_variable.data = x_adv
+    #print("peturbation= {}".format(
+    #    np.max(np.abs(np.array(x_adv)-np.array(image_tensor)))))
+    return img_variable

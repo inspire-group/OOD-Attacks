@@ -26,9 +26,29 @@ import torchvision.transforms as transforms
 def load_dataset(args, data_dir):
     if args.dataset_in == 'CIFAR-10':
         loader_train, loader_test = load_cifar_dataset(args, data_dir)
+    elif args.dataset_in == 'MNIST':
+        loader_train, loader_test = load_mnist_dataset(args, data_dir)
     else:
         raise ValueError('No support for dataset %s' % args.dataset)
 
+    return loader_train, loader_test
+
+
+def load_mnist_dataset(args, data_dir):
+    # MNIST data loaders
+    trainset = datasets.MNIST(root=data_dir, train=True,
+                                download=True, 
+                                transform=transforms.ToTensor())
+    loader_train = torch.utils.data.DataLoader(trainset, 
+                                batch_size=args.batch_size,
+                                shuffle=True)
+
+    testset = datasets.MNIST(root=data_dir,
+                                train=False,
+                                download=True, transform=transforms.ToTensor())
+    loader_test = torch.utils.data.DataLoader(testset, 
+                                batch_size=args.test_batch_size,
+                                shuffle=False)
     return loader_train, loader_test
 
 

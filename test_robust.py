@@ -12,16 +12,17 @@ import numpy as np
 import time
 import argparse
 
+from utils.mnist_models import cnn_3l
 from utils.cifar10_models import WideResNet
 from utils.test_utils import test, robust_test
-from utils.data_utils import load_cifar_dataset
+from utils.data_utils import load_dataset
 from utils.io_utils import init_dirs
 
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument('--dataset_in', type=str, default='CIFAR-10')
-    parser.add_argument('--model', type=str, default='wrn', choices=['wrn'])
+    parser.add_argument('--model', type=str, default='wrn', choices=['wrn','cnn_3l'])
     # parser.add_argument('--method', default="mixtrain")
     parser.add_argument('--depth', type=int, default=28)
     parser.add_argument('--width', type=int, default=1)
@@ -45,27 +46,31 @@ if __name__ == '__main__':
                       'gaussian_noise', 'uniform_noise', 'random_photograph', 'ones', 'zeros'])
     
 
+    if torch.cuda.is_available():
+        print('CUDA enabled')
+    else:
+        raise ValueError('Needs a working GPU!')
+
     args = parser.parse_args()
     model_dir_name = init_dirs(args)
     loader_train, loader_test = load_dataset(args, data_dir='./data')
 
-    if args.dataset == 'CIFAR-10':
+    if args.dataset_in == 'MNIST':
+        net = cnn_3l()
+    elif args.dataset_in == 'CIFAR-10':
         args.epsilon /= 255
         args.eps_step /= 255
-   
-    if 'wrn' in args.model:
-        net = WideResNet(depth=args.depth, num_classes=args.n_classes, widen_factor=args.width)
-    else:
-        raise ValueError('This type of model is not defined')
+        if 'wrn' in args.model:
+            net = WideResNet(depth=args.depth, num_classes=args.n_classes, widen_factor=args.width)
     
     if torch.cuda.device_count() > 1:
         print("Using multiple GPUs")
         net = nn.DataParallel(net)
+
     args.batch_size = args.batch_size * torch.cuda.device_count()
     print("Using batch size of {}".format(args.batch_size))
-    if torch.cuda.is_available():
-        print('CUDA enabled.')
-        net.cuda()
+
+    net.cuda()
 
     criterion = nn.CrossEntropyLoss()  
 

@@ -12,17 +12,18 @@ import numpy as np
 import time
 import argparse
 
+from utils.mnist_models import cnn_3l
 from utils.cifar10_models import WideResNet
 from utils.train_utils import train_one_epoch, robust_train_one_epoch, update_hyparam
 from utils.test_utils import test, robust_test
-from utils.data_utils import load_cifar_dataset
+from utils.data_utils import load_dataset
 from utils.io_utils import init_dirs
 
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
-    parser.add_argument('--dataset', type=str, default='CIFAR-10')
-    parser.add_argument('--model', type=str, default='wrn', choices=['wrn'])
+    parser.add_argument('--dataset_in', type=str, default='CIFAR-10')
+    parser.add_argument('--model', type=str, default='wrn', choices=['wrn','cnn_3l'])
     # parser.add_argument('--method', default="mixtrain")
     parser.add_argument('--depth', type=int, default=28)
     parser.add_argument('--width', type=int, default=1)
@@ -53,14 +54,19 @@ if __name__ == '__main__':
 
     args = parser.parse_args()
     model_dir_name = init_dirs(args)
-    if args.dataset == 'CIFAR-10':
-        loader_train, loader_test = load_cifar_dataset(args, data_dir='./data')
+    
+    loader_train, loader_test = load_dataset(args, data_dir='./data')
 
-    if args.dataset == 'CIFAR-10':
+
+    if args.dataset_in == 'MNIST':
+        if 'cnn_3l' in args.model:
+            net = cnn_3l()
+    elif args.dataset_in == 'CIFAR-10':
         args.epsilon /= 255
         args.eps_step /= 255
-   
-    net = WideResNet(depth=args.depth, num_classes=args.n_classes, widen_factor=args.width)
+        if 'wrn' in args.model:
+            net = WideResNet(depth=args.depth, num_classes=args.n_classes, widen_factor=args.width)
+    
     if torch.cuda.device_count() > 1:
         print("Using multiple GPUs")
         net = nn.DataParallel(net)
@@ -84,7 +90,7 @@ if __name__ == '__main__':
         start_time = time.time()
         lr = update_hyparam(epoch, args)
         optimizer.param_groups[0]['lr'] = lr
-        print('Current learning rate: %s'.format(lr))
+        print('Current learning rate: {}'.format(lr))
         if not args.is_adv:
             train_one_epoch(net, criterion, optimizer, 
                                   loader_train, verbose=False)
