@@ -1,51 +1,63 @@
 import os 
 os.environ['CUDA_DEVICE_ORDER'] = 'PCI_BUS_ID'
-os.environ['CUDA_VISIBLE_DEVICES'] = '4'
+os.environ['CUDA_VISIBLE_DEVICES'] = '0'
 
 import torch
 import torch.nn as nn
-import torchvision.transforms as transforms
-import torch.nn.functional as F
-from torch.autograd.gradcheck import zero_gradients
-from torch.autograd import Variable
 import numpy as np
 import time
 import argparse
+from torchsummary import summary
+from torch.utils.tensorboard import SummaryWriter
 
 from utils.mnist_models import cnn_3l
 from utils.cifar10_models import WideResNet
 from utils.train_utils import train_one_epoch, robust_train_one_epoch, update_hyparam
-from utils.test_utils import test, robust_test
-from utils.data_utils import load_dataset
+from utils.test_utils import test, robust_test, robust_test_during_train
+from utils.data_utils import load_dataset, load_ood_dataset
 from utils.io_utils import init_dirs
+from utils.ood_utils import ood_trainer
 
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
-    parser.add_argument('--dataset_in', type=str, default='CIFAR-10')
-    parser.add_argument('--model', type=str, default='wrn', choices=['wrn','cnn_3l'])
-    # parser.add_argument('--method', default="mixtrain")
+
+    # Data args
+    parser.add_argument('--dataset_in', type=str, default='MNIST')
+    parser.add_argument('--n_classes', type=int, default=10)
+    parser.add_argument('--num_samples', type=int, default=None)
+
+    # Model args
+    parser.add_argument('--model', type=str, default='cnn_3l', choices=['wrn','cnn_3l', 'cnn_3l_large'])
     parser.add_argument('--depth', type=int, default=28)
-    parser.add_argument('--width', type=int, default=1)
-    parser.add_argument('--is_training', type=bool, default=True)
+    parser.add_argument('--width', type=int, default=10)
+
+    # Training args
     parser.add_argument('--batch_size', type=int, default=128) 
     parser.add_argument('--test_batch_size', type=int, default=128)
-    parser.add_argument('--train_epochs', type=int, default=200)
+    parser.add_argument('--train_epochs', type=int, default=20)
     parser.add_argument('--learning_rate', type=float, default=0.1)
     parser.add_argument('--weight_decay', type=float, default=2e-4)
-    parser.add_argument('--is_adv', type=bool, default=False)
-    parser.add_argument('--attack', type=str, default='PGD')
-    parser.add_argument('--epsilon', type=float, default=8.0)
+
+    # Attack args
+    parser.add_argument('--is_adv', dest='is_adv', action='store_true')
+    parser.add_argument('--attack', type=str, default='PGD_linf')
+    parser.add_argument('--epsilon', type=float, default=0.3)
     parser.add_argument('--attack_iter', type=int, default=10)
-    parser.add_argument('--eps_step', type=float, default=2.0)
-    parser.add_argument('--targeted', type=bool, default=False)
+    parser.add_argument('--eps_step', type=float, default=0.04)
+    parser.add_argument('--targeted', dest='targeted', action='store_true')
     parser.add_argument('--clip_min', type=float, default=0)
     parser.add_argument('--clip_max', type=float, default=1.0)
-    parser.add_argument('--n_classes', type=int, default=10)
+    parser.add_argument('--rand_init', dest='rand_init', action='store_true')
+
+    # IO args
     parser.add_argument('--last_epoch', type=int, default=0)
-    parser.add_argument('--load_checkpoint', type=bool, default=False)
+    parser.add_argument('--load_checkpoint', dest='load_checkpoint', action='store_true')
     parser.add_argument('--checkpoint_path', type=str, default='trained_models')
-    
+
+    # OOD args
+    parser.add_argument('--is_ood_training', dest='ood_training', action='store_true')
+    parser.add_argument('--ood_detector', type=str, default=None, choices=['detector_1'])
 
     if torch.cuda.is_available():
         print('CUDA enabled')
@@ -53,10 +65,11 @@ if __name__ == '__main__':
         raise ValueError('Needs a working GPU!')
 
     args = parser.parse_args()
-    model_dir_name = init_dirs(args)
-    
-    loader_train, loader_test = load_dataset(args, data_dir='./data')
+    model_dir_name, log_dir_name = init_dirs(args)
+    writer = SummaryWriter(log_dir=log_dir_name)
+    print('Training %s' % model_dir_name)
 
+    loader_train, loader_test, _ = load_dataset(args, data_dir='./data')
 
     if args.dataset_in == 'MNIST':
         if 'cnn_3l' in args.model:
@@ -75,6 +88,9 @@ if __name__ == '__main__':
     print("Using batch size of {}".format(args.batch_size))
 
     net.cuda()
+
+    if args.dataset_in == 'MNIST':
+        summary(net, (1,28,28))
     
     if args.load_checkpoint:
         net.load_state_dict(torch.load(model_dir_name))
@@ -92,11 +108,13 @@ if __name__ == '__main__':
         optimizer.param_groups[0]['lr'] = lr
         print('Current learning rate: {}'.format(lr))
         if not args.is_adv:
-            train_one_epoch(net, criterion, optimizer, 
+            curr_loss = train_one_epoch(net, criterion, optimizer, 
                                   loader_train, verbose=False)
-        if args.is_adv:
-            robust_train_one_epoch(net, criterion, optimizer, loader_train, args, targeted=args.targeted, verbose=False)
+        else:
+            curr_loss = robust_train_one_epoch(net, criterion, optimizer, loader_train, args, verbose=False)
         print('time_taken for #{} epoch = {:.3f}'.format(epoch+1, time.time()-start_time))
-        robust_test(net, loader_test, args, n_batches=10)
+        robust_test_during_train(net, loader_test, args, n_batches=10)
         ckpt_path = 'checkpoint_' + str(args.last_epoch)
         torch.save(net.state_dict(), model_dir_name + ckpt_path)
+        writer.add_scalar('Loss/train', curr_loss, epoch)
+        writer.add_scalar('Lr', lr, epoch)
