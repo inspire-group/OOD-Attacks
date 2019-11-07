@@ -15,7 +15,7 @@ import numpy as np
 import torchvision.utils as vutils
 import gan_models
 import sys
-sys.path.append('../utils')
+sys.path.append('../../utils')
 import cifar10_vgg, data_utils
 
 
@@ -35,7 +35,7 @@ parser.add_argument('--seed', type=int, default=1, help='random seed')
 parser.add_argument('--log-interval', type=int, default=100, help='how many batches to wait before logging training status')
 parser.add_argument('--dataset', default='cifar10', help='cifar10')
 #parser.add_argument('--dataroot', required=True, help='path to dataset')
-parser.add_argument('--dataroot', default='../data', help='path to dataset')
+parser.add_argument('--dataroot', default='../../data', help='path to dataset')
 parser.add_argument('--imageSize', type=int, default=32, help='the height / width of the input image to network')
 parser.add_argument('--outf', default='./results/confidence_calibrated', help='folder to output images and model checkpoints')
 parser.add_argument('--wd', type=float, default=0.0, help='weight decay')
