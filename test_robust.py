@@ -62,7 +62,7 @@ if __name__ == '__main__':
     # OOD args
     parser.add_argument('--is_test_ood', dest='test_ood', action='store_true')
     parser.add_argument('--dataset_out', type=str, default='voc12', choices=['voc12', 'imagenet'])
-    parser.add_argument('--is_test_ood', dest='test_ood', action='store_true')
+    parser.add_argument('--ood_detector', dest='ood_detector', choices='odin, conf-cal')
     
 
     if torch.cuda.is_available():
