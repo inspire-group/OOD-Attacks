@@ -132,7 +132,7 @@ def gen_dataset(name, dataset_in, data_details, n_img=1000,
         x_out, y_out = X_test[0:n_img], Y_test[0:n_img, 0]
     elif name == 'imagenet':
         x_out = np.load(
-            '/data/nvme/imagenet_data/numpy/test_imagenet_cifar_exclusive_1k.npy')[0:n_img]
+            '/data/imagenet_data/test_imagenet_cifar_exclusive_1k.npy')[0:n_img]
     elif name == 'uniform_noise':
         x_out = np.random.randint(0, 256, (n_img, h_in, w_in, nc_in)).astype(
             np.uint8)  # unifrom noise
@@ -141,11 +141,11 @@ def gen_dataset(name, dataset_in, data_details, n_img=1000,
             np.uint8)  # unifrom noise
     elif name == 'random_photograph':
         x_out = np.load(
-            '/data/nvme/datasets/random_images_picsum/correct_random_photos/random_images_test.npy')[0:n_img]
+            '/data/random_images_picsum/random_images_test.npy')[0:n_img]
     elif name == 'voc12':
-        x1 = np.load('/data/nvme/datasets/pascal_voc_12/test_final_5k.npy')
+        x1 = np.load('/data/pascal_voc_12/test_final_5k.npy')
         y1 = np.load(
-            '/data/nvme/datasets/pascal_voc_12/test_final_5k_labels.npy')
+            '/data/pascal_voc_12/test_final_5k_labels.npy')
         cifar_inclusive = [1, 3, 6, 7, 8, 12, 13]
         cifar_exclusive = [2, 4, 5, 9, 10, 11, 14, 15, 16, 17, 18, 19, 20]
         x_out = np.array([x1[i] for i in range(len(x1))

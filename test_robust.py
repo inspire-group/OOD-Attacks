@@ -12,8 +12,7 @@ import numpy as np
 import time
 import argparse
 
-from utils.mnist_models import cnn_3l, cnn_3l_large
-from utils.cifar10_models import WideResNet
+from utils.cifar10_resnet import WideResNet
 from utils.test_utils import test, robust_test
 from utils.data_utils import load_dataset, load_ood_dataset
 from utils.io_utils import init_dirs
@@ -25,14 +24,14 @@ if __name__ == '__main__':
 
     parser = argparse.ArgumentParser()
     # Data args
-    parser.add_argument('--dataset_in', type=str, default='MNIST')
+    parser.add_argument('--dataset_in', type=str, default='CIFAR-10')
     parser.add_argument('--n_classes', type=int, default=10)
     parser.add_argument('--num_samples', type=int, default=None)
     
     # Model args
-    parser.add_argument('--model', type=str, default='cnn_3l', choices=['wrn','cnn_3l', 'cnn_3l_large'])
+    parser.add_argument('--model', type=str, default='cnn_3l', choices=['wrn'])
     parser.add_argument('--depth', type=int, default=28)
-    parser.add_argument('--width', type=int, default=1)
+    parser.add_argument('--width', type=int, default=10)
     parser.add_argument('--batch_size', type=int, default=128) 
     parser.add_argument('--test_batch_size', type=int, default=128)
     # parser.add_argument('--learning_rate', type=float, default=0.1)
@@ -62,8 +61,9 @@ if __name__ == '__main__':
     # OOD args
     parser.add_argument('--is_test_ood', dest='test_ood', action='store_true')
     parser.add_argument('--dataset_out', type=str, default='voc12', choices=['voc12', 'imagenet'])
-    parser.add_argument('--is_test_ood', dest='test_ood', action='store_true')
-    
+    parser.add_argument('--is_eval_ood_detector', dest='eval_ood_detector', action='store_true')
+    parser.add_argument('--ood_detector', type=str, default='odin', choices=['odin'])
+    parser.add_argument('--temp', type=int, default=1)
 
     if torch.cuda.is_available():
         print('CUDA enabled')
@@ -92,7 +92,7 @@ if __name__ == '__main__':
 
     if torch.cuda.device_count() > 1:
         print("Using multiple GPUs")
-        net = nn.DataParallel(net)
+    net = nn.DataParallel(net)
 
     args.batch_size = args.batch_size * torch.cuda.device_count()
     print("Using batch size of {}".format(args.batch_size))
@@ -105,11 +105,12 @@ if __name__ == '__main__':
     ckpt_path = 'checkpoint_' + str(args.last_epoch)
     print(model_dir_name)
     net.load_state_dict(torch.load(model_dir_name + ckpt_path))
-    test(net, loader_train)
-    robust_test(net, loader_test, args, n_batches=10)
+    # test(net, loader_train)
+    _, _, adv_in = robust_test(net, loader_test, args, n_batches=10)
+    adv_ood = None
     if args.test_ood:
         print('Testing on OOD %s data' % args.dataset_out)
-        robust_test(net, loader_ood, args, n_batches=10)
+        _, _, adv_ood = robust_test(net, loader_ood, args, n_batches=10)
     if args.eval_ood_detector:
         print('Evaluating OOD detector %s' % args.ood_detector)
-        robust_ood_eval(net, loader_test, loader_ood, args, n_batches=10)
+        robust_ood_eval(args, net, loader_test, loader_ood, n_batches=10, adv_ood=adv_ood)

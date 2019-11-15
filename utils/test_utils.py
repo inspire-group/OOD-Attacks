@@ -34,6 +34,7 @@ def robust_test(model, loader, args, n_batches=0):
     model.eval()
     num_correct, num_correct_adv, num_samples = 0, 0, 0
     steps = 1
+    adv_samples = []
     for x, y in loader:
         x = x.cuda()
         y = y.cuda()
@@ -78,6 +79,7 @@ def robust_test(model, loader, args, n_batches=0):
         if n_batches > 0 and steps==n_batches:
             break
         steps += 1
+        adv_samples.append((adv_x,y_target))
 
     acc = float(num_correct) / num_samples
     acc_adv = float(num_correct_adv) / num_samples
@@ -92,7 +94,7 @@ def robust_test(model, loader, args, n_batches=0):
         num_samples,
     ))
 
-    return acc, acc_adv
+    return acc, acc_adv, adv_samples
 
 def robust_test_during_train(model, loader, args, n_batches=0):
     """

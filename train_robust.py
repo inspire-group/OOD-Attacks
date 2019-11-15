@@ -1,6 +1,6 @@
 import os 
 os.environ['CUDA_DEVICE_ORDER'] = 'PCI_BUS_ID'
-os.environ['CUDA_VISIBLE_DEVICES'] = '0'
+os.environ['CUDA_VISIBLE_DEVICES'] = '1,2'
 
 import torch
 import torch.nn as nn
@@ -10,8 +10,7 @@ import argparse
 from torchsummary import summary
 from torch.utils.tensorboard import SummaryWriter
 
-from utils.mnist_models import cnn_3l
-from utils.cifar10_models import WideResNet
+from utils.cifar10_resnet import WideResNet
 from utils.train_utils import train_one_epoch, robust_train_one_epoch, update_hyparam
 from utils.test_utils import test, robust_test, robust_test_during_train
 from utils.data_utils import load_dataset, load_ood_dataset
@@ -23,12 +22,12 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser()
 
     # Data args
-    parser.add_argument('--dataset_in', type=str, default='MNIST')
+    parser.add_argument('--dataset_in', type=str, default='CIFAR-10')
     parser.add_argument('--n_classes', type=int, default=10)
     parser.add_argument('--num_samples', type=int, default=None)
 
     # Model args
-    parser.add_argument('--model', type=str, default='cnn_3l', choices=['wrn','cnn_3l', 'cnn_3l_large'])
+    parser.add_argument('--model', type=str, default='wrn', choices=['wrn'])
     parser.add_argument('--depth', type=int, default=28)
     parser.add_argument('--width', type=int, default=10)
 
