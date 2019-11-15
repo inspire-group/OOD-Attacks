@@ -27,7 +27,7 @@ python test_robust.py --dataset_in=CIFAR-10 --model=wrn --depth=28 --width=10 --
 ```
 
 ### Evaluating and attacking OOD detectors
-To evaluate the FPR of the ODIN OOD detector using benign examples, run
+To evaluate the FPR of the ODIN OOD detector using both benign and adversarial OOD examples, run
 ```
-python test_robust.py --dataset_in=CIFAR-10 --model=wrn --depth=28 --width=10 --targeted --is_eval_ood_detector --ood_detector=odin --dataset_out=voc12 --temp=1
+python test_robust.py --dataset_in=CIFAR-10 --model=wrn --depth=28 --width=10 --targeted --is_test_ood --is_eval_ood_detector --ood_detector=odin --dataset_out=voc12 --temp=1
 ```
