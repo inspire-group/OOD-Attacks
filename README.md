@@ -1,6 +1,6 @@
 # OOD-Attacks
 
-This repository contains the code for the paper 'Analyzing the Robustness of Open-World Machine Learning' accepted at AISec 2019, which is co-located with ACM CCS. All the results presented therein use the CIFAR-10 dataset as the in-distribution dataset. The out-of-distribution datasets will be available for download here soon!
+This repository contains the code for the paper 'Analyzing the Robustness of Open-World Machine Learning' accepted at AISec 2019, which is co-located with ACM CCS. All the results presented therein use the CIFAR-10 dataset as the in-distribution dataset. The out-of-distribution datasets are available for download [here](https://bit.ly/37iwUDT).
 
 Dependencies: PyTorch-1.2, torchvision, numpy
 
